@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -24,15 +25,58 @@ public class Builder : MonoBehaviour
     void Update()
     {
         previewCube.GetComponent<MeshRenderer>().enabled = false;
-        ShowPreview();
 
-        if (Input.GetMouseButtonDown(0) && _selection)
+        if (createMode)
         {
-            CreateBlock();
+            previewCube.GetComponent<Renderer>().material = addMaterial;
+            ShowCreatingPreview();
+
+            if (Input.GetMouseButtonDown(0) && _selection)
+            {
+                CreateBlock();
+            }
+        }
+        else
+        {
+            previewCube.GetComponent<Renderer>().material = removeMaterial;
+            ShowDeletingPreview();
+
+            if (Input.GetMouseButtonDown(0) && _selection)
+            {
+                DeleteBlock();
+            }
         }
     }
 
-    void ShowPreview()
+    void DeleteBlock()
+    {
+        Destroy(_selection.gameObject);
+        _selection = null;
+    }
+
+    void ShowDeletingPreview()
+    {
+        // Raycast tutorial: https://www.youtube.com/watch?v=_yf5vzZ2sYE
+        if (_selection != null)
+        {
+            _selection = null;
+        }
+
+        var cast = Camera.main.ScreenPointToRay(Input.mousePosition);
+        RaycastHit hit;
+        if (Physics.Raycast(cast, out hit))
+        {
+            var selection = hit.transform;
+            var center = selection.GetComponent<Renderer>().bounds.center;
+            previewCube.SetPositionAndRotation(center, Quaternion.identity);
+            previewCube.GetComponent<MeshRenderer>().enabled = true;
+            _selection = selection;
+            _hitNormal = hit.normal;
+            _offset = selection.position - center;
+        }
+    }
+
+    void ShowCreatingPreview()
     {
         // Raycast tutorial: https://www.youtube.com/watch?v=_yf5vzZ2sYE
         if (_selection != null)
@@ -59,5 +103,10 @@ public class Builder : MonoBehaviour
         Debug.Log(_offset);
         var newBlock = Instantiate(instantiateObject, previewCube.transform.position, Quaternion.identity, transform.parent);
         newBlock.Translate(_offset);
+    }
+
+    public void SwitchMode(bool newMode)
+    {
+        createMode = newMode;
     }
 }
