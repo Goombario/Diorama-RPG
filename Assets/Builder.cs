@@ -67,12 +67,12 @@ public class Builder : MonoBehaviour
         if (Physics.Raycast(cast, out hit))
         {
             var selection = hit.transform;
-            var center = selection.GetComponent<Renderer>().bounds.center;
-            previewCube.SetPositionAndRotation(center, Quaternion.identity);
+            var selCenter = selection.GetComponent<Renderer>().bounds.center;
+            previewCube.SetPositionAndRotation(selCenter, Quaternion.identity);
             previewCube.GetComponent<MeshRenderer>().enabled = true;
             _selection = selection;
             _hitNormal = hit.normal;
-            _offset = selection.position - center;
+            _offset = selection.position - selCenter;
         }
     }
 
@@ -89,20 +89,56 @@ public class Builder : MonoBehaviour
         if (Physics.Raycast(cast, out hit))
         {
             var selection = hit.transform;
-            var center = selection.GetComponent<Renderer>().bounds.center;
-            previewCube.SetPositionAndRotation(center + hit.normal, Quaternion.identity);
+            var selCenter = selection.GetComponent<Renderer>().bounds.center;
+            var previewCenter = previewCube.GetComponent<Renderer>().bounds.center;
+            var prevOffset = previewCube.position - previewCenter;
+            previewCube.SetPositionAndRotation(FindPreviewPoint(hit), Quaternion.identity);
             previewCube.GetComponent<MeshRenderer>().enabled = true;
             _selection = selection;
             _hitNormal = hit.normal;
-            _offset = selection.position - center;
+            _offset = selection.position - selCenter;
         }
+    }
+
+    Vector3 FindPreviewPoint(RaycastHit hit)
+    {
+        var selection = hit.transform;
+        var selCenter = selection.GetComponent<Renderer>().bounds.center;
+        var selOffset = selection.position - selCenter;
+        var previewCenter = previewCube.GetComponent<Renderer>().bounds.center;
+        var prevOffset = previewCube.position - previewCenter;
+
+        var hitDirection = (hit.point - selCenter).normalized;
+        float maxHit = Mathf.NegativeInfinity;
+        int pos = 0;
+        for (int i = 0; i < 3; i++)
+        {
+            if (Mathf.Abs(hitDirection[i]) > maxHit)
+            {
+                pos = i;
+                maxHit = hitDirection[i];
+            }
+        }
+        var hitDir = new Vector3();
+        hitDir[pos] = maxHit;
+        hitDir = hitDir.normalized;
+
+        var difference = selection.GetComponent<Renderer>().bounds.extents[pos] + previewCube.GetComponent<Renderer>().bounds.extents[pos];
+        var newPoint = selCenter;
+        newPoint[pos] += difference;
+
+        var hitDisplacement = new Vector3(selOffset.x * hitDirection.x, selOffset.y * hitDirection.y, selOffset.z * hitDirection.z);
+
+        var previewPoint = selCenter + hitDisplacement + prevOffset;
+        return newPoint;
     }
 
     void CreateBlock()
     {
         Debug.Log(_offset);
         var newBlock = Instantiate(instantiateObject, previewCube.transform.position, Quaternion.identity, transform.parent);
-        newBlock.Translate(_offset);
+        //newBlock.Translate(_offset);
+        newBlock.Translate(-(previewCube.position - previewCube.GetComponent<Renderer>().bounds.center));
     }
 
     public void SwitchMode(bool newMode)
