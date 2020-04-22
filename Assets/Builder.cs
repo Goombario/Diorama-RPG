@@ -5,7 +5,7 @@ using UnityEngine;
 
 public class Builder : MonoBehaviour
 {
-    [SerializeField] private BoxCollider previewCube = null;
+    [SerializeField] private BoxCollider previewObject = null;
     [SerializeField] private BoxCollider instantiateObject;
     [SerializeField] private Material addMaterial;
     [SerializeField] private Material removeMaterial;
@@ -18,27 +18,28 @@ public class Builder : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        previewCube.GetComponent<Renderer>().material = addMaterial;
+        if (!previewObject) previewObject = GetComponentInChildren<BoxCollider>();
+        previewObject.GetComponentInChildren<Renderer>().material = addMaterial;
     }
 
     // Update is called once per frame
     void Update()
     {
-        previewCube.GetComponent<MeshRenderer>().enabled = false;
+        previewObject.GetComponentInChildren<MeshRenderer>().enabled = false;
 
         if (createMode)
         {
-            previewCube.GetComponent<Renderer>().material = addMaterial;
+            previewObject.GetComponentInChildren<Renderer>().material = addMaterial;
             ShowCreatingPreview2();
 
             if (Input.GetMouseButtonDown(0) && _selection)
             {
-                CreateBlock();
+                CreateBlock2();
             }
         }
         else
         {
-            previewCube.GetComponent<Renderer>().material = removeMaterial;
+            previewObject.GetComponentInChildren<Renderer>().material = removeMaterial;
             ShowDeletingPreview();
 
             if (Input.GetMouseButtonDown(0) && _selection)
@@ -46,6 +47,11 @@ public class Builder : MonoBehaviour
                 DeleteBlock();
             }
         }
+    }
+
+    private void CreateBlock2()
+    {
+        var newBlock = Instantiate(instantiateObject, previewObject.transform.position, Quaternion.identity, transform.parent);
     }
 
     void ShowCreatingPreview2()
@@ -66,18 +72,20 @@ public class Builder : MonoBehaviour
         //     Debug.Log("Not a box collider");
         //     return;
         // }
-
+        
 
         var previewPos = 
             hit.point +     // Need to round now, maybe based on the perpendicular to the normal?
-            Vector3.Scale(previewCube.size/2f, hit.normal);
+            Vector3.Scale(previewObject.size/2f, hit.normal) -
+            previewObject.center;
             //boxCollider.transform.position +
             //Vector3.Scale(boxCollider.size, hit.normal) + 
 
-
-        previewCube.transform.SetPositionAndRotation(previewPos, Quaternion.identity);
-        previewCube.GetComponent<MeshRenderer>().enabled = true;
-        Debug.Log(previewPos);
+        previewPos = new Vector3(Mathf.Round(previewPos.x), Mathf.Round(previewPos.y), Mathf.Round(previewPos.z));
+        previewObject.transform.SetPositionAndRotation(previewPos, Quaternion.identity);
+        previewObject.GetComponentInChildren<MeshRenderer>().enabled = true;
+        _selection = hit.transform;
+        //Debug.Log(previewPos);
     }
 
     void DeleteBlock()
@@ -99,9 +107,9 @@ public class Builder : MonoBehaviour
         if (Physics.Raycast(cast, out hit))
         {
             var selection = hit.transform;
-            var selCenter = selection.GetComponent<Renderer>().bounds.center;
-            previewCube.transform.SetPositionAndRotation(selCenter, Quaternion.identity);
-            previewCube.GetComponent<MeshRenderer>().enabled = true;
+            var selCenter = selection.GetComponentInChildren<Renderer>().bounds.center;
+            previewObject.transform.SetPositionAndRotation(selCenter, Quaternion.identity);
+            previewObject.GetComponentInChildren<MeshRenderer>().enabled = true;
             _selection = selection;
             _hitNormal = hit.normal;
             _offset = selection.position - selCenter;
@@ -121,11 +129,11 @@ public class Builder : MonoBehaviour
         if (Physics.Raycast(cast, out hit))
         {
             var selection = hit.transform;
-            var selCenter = selection.GetComponent<Renderer>().bounds.center;
-            var previewCenter = previewCube.GetComponent<Renderer>().bounds.center;
-            var prevOffset = previewCube.transform.position - previewCenter;
-            previewCube.transform.SetPositionAndRotation(FindPreviewPoint(hit), Quaternion.identity);
-            previewCube.GetComponent<MeshRenderer>().enabled = true;
+            var selCenter = selection.GetComponentInChildren<Renderer>().bounds.center;
+            var previewCenter = previewObject.GetComponentInChildren<Renderer>().bounds.center;
+            var prevOffset = previewObject.transform.position - previewCenter;
+            previewObject.transform.SetPositionAndRotation(FindPreviewPoint(hit), Quaternion.identity);
+            previewObject.GetComponentInChildren<MeshRenderer>().enabled = true;
             _selection = selection;
             _hitNormal = hit.normal;
             _offset = selection.position - selCenter;
@@ -135,10 +143,10 @@ public class Builder : MonoBehaviour
     Vector3 FindPreviewPoint(RaycastHit hit)
     {
         var selection = hit.transform;
-        var selCenter = selection.GetComponent<Renderer>().bounds.center;
+        var selCenter = selection.GetComponentInChildren<Renderer>().bounds.center;
         var selOffset = selection.position - selCenter;
-        var previewCenter = previewCube.GetComponent<Renderer>().bounds.center;
-        var prevOffset = previewCube.transform.position - previewCenter;
+        var previewCenter = previewObject.GetComponentInChildren<Renderer>().bounds.center;
+        var prevOffset = previewObject.transform.position - previewCenter;
 
         var hitDirection = (hit.point - selCenter).normalized;
         float maxHit = Mathf.NegativeInfinity;
@@ -155,7 +163,7 @@ public class Builder : MonoBehaviour
         hitDir[pos] = maxHit;
         hitDir = hitDir.normalized;
 
-        var difference = selection.GetComponent<Renderer>().bounds.extents[pos] + previewCube.GetComponent<Renderer>().bounds.extents[pos];
+        var difference = selection.GetComponentInChildren<Renderer>().bounds.extents[pos] + previewObject.GetComponentInChildren<Renderer>().bounds.extents[pos];
         var newPoint = selCenter;
         newPoint[pos] += difference;
         var hitDisplacement = new Vector3(selOffset.x * hitDirection.x, selOffset.y * hitDirection.y, selOffset.z * hitDirection.z);
@@ -167,9 +175,9 @@ public class Builder : MonoBehaviour
     void CreateBlock()
     {
         Debug.Log(_offset);
-        var newBlock = Instantiate(instantiateObject, previewCube.transform.position, Quaternion.identity, transform.parent);
+        var newBlock = Instantiate(instantiateObject, previewObject.transform.position, Quaternion.identity, transform.parent);
         //newBlock.Translate(_offset);
-        newBlock.transform.Translate(-(previewCube.transform.position - previewCube.GetComponent<Renderer>().bounds.center));
+        newBlock.transform.Translate(-(previewObject.transform.position - previewObject.GetComponentInChildren<Renderer>().bounds.center));
     }
 
     public void SwitchMode(bool newMode)
