@@ -29,7 +29,7 @@ public class Builder : MonoBehaviour
 
         if (createMode)
         {
-            previewObject.GetComponentInChildren<Renderer>().material = addMaterial;
+            
             ShowCreatingPreview2();
 
             if (Input.GetMouseButtonDown(0) && _selection)
@@ -40,7 +40,7 @@ public class Builder : MonoBehaviour
         else
         {
             previewObject.GetComponentInChildren<Renderer>().material = removeMaterial;
-            ShowDeletingPreview();
+            ShowDeletingPreview2();
 
             if (Input.GetMouseButtonDown(0) && _selection)
             {
@@ -60,32 +60,46 @@ public class Builder : MonoBehaviour
         {
             _selection = null;
         }
+     
+        var cast = Camera.main.ScreenPointToRay(Input.mousePosition);
+        RaycastHit hit;
+        if (!Physics.Raycast(cast, out hit)) return;
 
+        //BoxCollider boxCollider = hit.collider as BoxCollider;
+        
+        var previewPos = 
+            hit.point +
+            Vector3.Scale(previewObject.size/2f, hit.normal) -
+            previewObject.center;
+
+        previewPos = new Vector3(Mathf.Round(previewPos.x), Mathf.Round(previewPos.y), Mathf.Round(previewPos.z));
+        previewObject.transform.SetPositionAndRotation(previewPos, Quaternion.identity);
+        previewObject.GetComponentInChildren<MeshRenderer>().enabled = true;
+        previewObject.GetComponentInChildren<Renderer>().material = addMaterial;
+        _selection = hit.transform;
+    }
+
+    void ShowDeletingPreview2()
+    {
+        if (_selection != null)
+        {
+            _selection = null;
+        }
+     
         var cast = Camera.main.ScreenPointToRay(Input.mousePosition);
         RaycastHit hit;
         if (!Physics.Raycast(cast, out hit)) return;
 
         BoxCollider boxCollider = hit.collider as BoxCollider;
-
-        // if (!boxCollider)
-        // {
-        //     Debug.Log("Not a box collider");
-        //     return;
-        // }
         
-
         var previewPos = 
-            hit.point +     // Need to round now, maybe based on the perpendicular to the normal?
-            Vector3.Scale(previewObject.size/2f, hit.normal) -
-            previewObject.center;
-            //boxCollider.transform.position +
-            //Vector3.Scale(boxCollider.size, hit.normal) + 
+            hit.transform.position;
 
-        previewPos = new Vector3(Mathf.Round(previewPos.x), Mathf.Round(previewPos.y), Mathf.Round(previewPos.z));
+        //previewPos = new Vector3(Mathf.Round(previewPos.x), Mathf.Round(previewPos.y), Mathf.Round(previewPos.z));
         previewObject.transform.SetPositionAndRotation(previewPos, Quaternion.identity);
         previewObject.GetComponentInChildren<MeshRenderer>().enabled = true;
+        previewObject.GetComponentInChildren<Renderer>().material = addMaterial;
         _selection = hit.transform;
-        //Debug.Log(previewPos);
     }
 
     void DeleteBlock()
